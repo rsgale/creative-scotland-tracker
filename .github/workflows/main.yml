@@ -22,8 +22,12 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run script
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: python opportunity_tracker.py
-
+        
       - name: Commit results
         run: |
           git config --local user.email "action@github.com"
