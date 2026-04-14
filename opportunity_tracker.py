@@ -8,7 +8,7 @@ from datetime import datetime
 # --- CONFIGURATION ---
 RSS_URL = "https://opportunities.creativescotland.com/rss/"
 # Add the keywords you are looking for (case-insensitive)
-CRITERIA = ["funding", "visual arts", "edinburgh", "residency", "grant"]
+CRITERIA = ["funding", "theatre", "jobs", "marketing", "grant"]
 OUTPUT_FILE = "matched_opportunities.csv"
 
 def check_opportunities():
