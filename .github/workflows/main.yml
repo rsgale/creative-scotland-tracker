@@ -1,0 +1,33 @@
+name: Daily RSS Check
+
+on:
+  schedule:
+    # This runs at 09:00 UTC every day
+    - cron: '0 9 * * *'
+  workflow_dispatch: # Allows you to run it manually for testing
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run script
+        run: python opportunity_tracker.py
+
+      - name: Commit results
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add matched_opportunities.csv
+          git commit -m "Update matches" || exit 0
+          git push
