@@ -2,24 +2,28 @@ name: Daily RSS Check
 
 on:
   schedule:
-    # This runs at 09:00 UTC every day
     - cron: '0 9 * * *'
-  workflow_dispatch: # Allows you to run it manually for testing
+  workflow_dispatch: 
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # This line fixes the permission issue directly in the code
+    permissions:
+      contents: write
+      
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4  # Updated to v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5 # Updated to v5
         with:
           python-version: '3.9'
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install feedparser
 
       - name: Run script
         env:
@@ -27,11 +31,14 @@ jobs:
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
         run: python opportunity_tracker.py
-        
+
       - name: Commit results
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add matched_opportunities.csv
-          git commit -m "Update matches" || exit 0
-          git push
+          # Only attempt to commit if the file exists and has changed
+          if [ -f matched_opportunities.csv ]; then
+            git add matched_opportunities.csv
+            git commit -m "Update matches" || echo "No changes to commit"
+            git push || echo "No changes to push"
+          fi
