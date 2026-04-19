@@ -6,7 +6,7 @@ from datetime import datetime
 
 # --- CONFIGURATION ---
 RSS_URL = "https://opportunities.creativescotland.com/rss/"
-CRITERIA = ["funding", "theatre", "marketing", "jobs"] 
+CRITERIA = ["funding", "theatre", "marketing", "jobs", "the"] 
 
 def send_email(matches):
     # Get credentials from GitHub Secrets
