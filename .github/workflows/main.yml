@@ -8,22 +8,21 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # This line fixes the permission issue directly in the code
     permissions:
       contents: write
       
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4  # Updated to v4
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5 # Updated to v5
+        uses: actions/setup-python@v5
         with:
           python-version: '3.9'
 
       - name: Install dependencies
         run: |
-          pip install feedparser
+          pip install feedparser requests  # <--- ADDED 'requests' HERE
 
       - name: Run script
         env:
@@ -36,7 +35,6 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          # Only attempt to commit if the file exists and has changed
           if [ -f matched_opportunities.csv ]; then
             git add matched_opportunities.csv
             git commit -m "Update matches" || echo "No changes to commit"
