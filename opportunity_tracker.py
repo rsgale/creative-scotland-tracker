@@ -8,8 +8,8 @@ from datetime import datetime
 
 # --- CONFIGURATION ---
 RSS_URL = "https://opportunities.creativescotland.com/api/rss/"
-# Keep "the" for this run to confirm the email is working
-CRITERIA = ["funding", "theatre", "marketing", "jobs", "the"] 
+# Remember to remove "the" once you are happy with the results!
+CRITERIA = ["funding", "theatre", "marketing", "jobs"] 
 
 def send_email(matches):
     email_user = os.environ.get('EMAIL_USER')
@@ -17,13 +17,22 @@ def send_email(matches):
     email_to = os.environ.get('EMAIL_RECIPIENT')
 
     msg = EmailMessage()
-    msg['Subject'] = f"Creative Scotland Matches - {datetime.now().strftime('%Y-%m-%d')}"
+    msg['Subject'] = f"✨ Creative Scotland matches: {len(matches)} found ({datetime.now().strftime('%d %b')})"
     msg['From'] = email_user
     msg['To'] = email_to
 
-    body = f"I found {len(matches)} matches today:\n\n"
+    # Build a much nicer email body
+    body = f"Hello,\n\nI found {len(matches)} new opportunities matching your criteria today.\n"
+    body += "="*60 + "\n\n"
+
     for item in matches:
-        body += f"TITLE: {item['title']}\nLINK: {item['link']}\n\n"
+        body += f"TITLE:     {item['title']}\n"
+        body += f"DATE:      {item['published']}\n"
+        body += f"LINK:      {item['link']}\n"
+        body += f"SUMMARY:   {item['summary']}\n"
+        body += "\n" + "-"*40 + "\n\n"
+
+    body += "This is an automated check from your GitHub Opportunity Tracker."
     
     msg.set_content(body)
     context = ssl.create_default_context()
@@ -33,40 +42,39 @@ def send_email(matches):
 
 def check_opportunities():
     print(f"--- Starting Check: {datetime.now()} ---")
-    
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'application/rss+xml, application/xml, text/xml',
-    }
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
     
     try:
-        # Fetch the API feed
         response = requests.get(RSS_URL, headers=headers, timeout=20)
         response.raise_for_status()
-        
-        # Parse the content
         feed = feedparser.parse(response.content)
-        print(f"Total items found in API feed: {len(feed.entries)}")
+        print(f"Total items found in feed: {len(feed.entries)}")
         
         matched_items = []
         for entry in feed.entries:
-            # Check both title and summary
             title = entry.get('title', '')
-            summary = entry.get('summary', entry.get('description', ''))
+            # Pulling the summary and cleaning it up a bit
+            summary = entry.get('summary', entry.get('description', 'No description available.'))
+            # Some RSS summaries are very long; this limits it to 300 characters
+            summary_snippet = (summary[:300] + '...') if len(summary) > 300 else summary
+            
+            published = entry.get('published', 'No date listed')
+            
             content_to_search = (title + " " + summary).lower()
             
             if any(keyword.lower() in content_to_search for keyword in CRITERIA):
                 matched_items.append({
                     'title': title,
-                    'link': entry.get('link', 'No Link')
+                    'link': entry.get('link', 'No Link'),
+                    'published': published,
+                    'summary': summary_snippet
                 })
 
         if matched_items:
             print(f"SUCCESS: {len(matched_items)} matches found. Sending email...")
             send_email(matched_items)
-            print("Process complete.")
         else:
-            print("No matches found in the feed.")
+            print("No matches found.")
 
     except Exception as e:
         print(f"ERROR: {e}")
