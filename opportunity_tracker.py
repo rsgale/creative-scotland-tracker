@@ -7,7 +7,12 @@ from email.message import EmailMessage
 from datetime import datetime
 
 # --- CONFIGURATION ---
-RSS_URL = "https://opportunities.creativescotland.com/rss/"
+# We will try these in order until one works
+RSS_URLS = [
+    "https://opportunities.creativescotland.com/rss",         # No trailing slash
+    "https://opportunities.creativescotland.com/rss/latest",  # Common alternative
+    "https://opportunities.creativescotland.com/rss/"         # Original with slash
+]
 CRITERIA = ["funding", "theatre", "marketing", "jobs", "the"] 
 
 def send_email(matches):
@@ -33,51 +38,53 @@ def send_email(matches):
 def check_opportunities():
     print(f"--- Starting Check: {datetime.now()} ---")
     
-    # IMPROVED HEADERS: Looking even more like a real Chrome browser
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-GB,en;q=0.5',
-        'Referer': 'https://opportunities.creativescotland.com/',
-        'Connection': 'keep-alive',
     }
     
-    try:
-        # Using a session can sometimes help bypass bot detection
-        session = requests.Session()
-        response = session.get(RSS_URL, headers=headers, timeout=30)
-        response.raise_for_status()
+    working_feed = None
+    
+    # Try the different URL variations
+    for url in RSS_URLS:
+        print(f"Trying URL: {url}")
+        try:
+            response = requests.get(url, headers=headers, timeout=20)
+            if response.status_code == 200:
+                # If we get a 200 (Success), parse it to see if it actually has items
+                feed = feedparser.parse(response.content)
+                if len(feed.entries) > 0:
+                    print(f"SUCCESS: Found working feed at {url}")
+                    working_feed = feed
+                    break
+                else:
+                    print(f"URL {url} returned 200 but no entries found.")
+            else:
+                print(f"URL {url} failed with status code: {response.status_code}")
+        except Exception as e:
+            print(f"Error trying {url}: {e}")
+
+    if not working_feed:
+        print("CRITICAL ERROR: Could not find a working RSS feed URL.")
+        return
+
+    matched_items = []
+    for entry in working_feed.entries:
+        title = entry.get('title', 'No Title')
+        summary = entry.get('summary', entry.get('description', ''))
+        content_to_search = (title + " " + summary).lower()
         
-        # We use .content (raw bytes) instead of .text to avoid encoding errors
-        feed = feedparser.parse(response.content)
-        print(f"Total items found in feed: {len(feed.entries)}")
-        
-        if len(feed.entries) == 0:
-            print("DEBUG: The feed is empty. Here is the start of the website response:")
-            print(response.text[:500]) # This tells us if we are seeing a 'Blocked' page
-            return
+        if any(keyword.lower() in content_to_search for keyword in CRITERIA):
+            matched_items.append({
+                'title': title,
+                'link': entry.get('link', 'No Link')
+            })
 
-        matched_items = []
-        for entry in feed.entries:
-            title = entry.get('title', 'No Title')
-            summary = entry.get('summary', entry.get('description', ''))
-            content_to_search = (title + " " + summary).lower()
-            
-            if any(keyword.lower() in content_to_search for keyword in CRITERIA):
-                matched_items.append({
-                    'title': title,
-                    'link': entry.get('link', 'No Link')
-                })
-
-        if matched_items:
-            print(f"MATCHES FOUND: {len(matched_items)}. Sending email...")
-            send_email(matched_items)
-            print("Email process complete.")
-        else:
-            print("No matches found in the items today.")
-
-    except Exception as e:
-        print(f"ERROR: {e}")
+    if matched_items:
+        print(f"MATCHES FOUND: {len(matched_items)}. Sending email...")
+        send_email(matched_items)
+        print("Email process complete.")
+    else:
+        print("No matches found in the feed today.")
 
 if __name__ == "__main__":
     check_opportunities()
