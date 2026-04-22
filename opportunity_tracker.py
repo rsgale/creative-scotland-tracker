@@ -9,7 +9,7 @@ from datetime import datetime
 # --- CONFIGURATION ---
 RSS_URL = "https://opportunities.creativescotland.com/api/rss/"
 # Remember to remove "the" once you are happy with the results!
-CRITERIA = ["funding", "theatre", "marketing", "jobs"] 
+CRITERIA = ["funding", "theatre", "marketing", "jobs", "write"] 
 
 def send_email(matches):
     email_user = os.environ.get('EMAIL_USER')
